@@ -1,0 +1,13 @@
+Build -
+  git
+  zig
+  lua/luaJIT(if you want to build with your ImGUI version) (optional)
+
+Program -
+  Cimgui -
+    GLFW
+    Vulkan
+    OpenGL
+    
+  zig_LuaJIT
+  slog

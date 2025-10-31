@@ -1,0 +1,6 @@
+.{
+  .name = .EnginePlugins,
+  .version = "0.1.0-alpha",
+  .dependencies = .{},
+  .paths = .{"build.zig", "build.zig.zon"}
+}

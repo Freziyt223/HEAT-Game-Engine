@@ -1,0 +1,11 @@
+.{
+  .name = .HeatGameEngine, 
+  .version = "0.1.0-alpha", 
+  .fingerprint = 0xb65319558687a0a5, 
+  .dependencies = .{
+    .plugins = .{
+      .path = "./Plugins"
+    }
+  }, 
+  .paths = .{ "build.zig", "build.zig.zon", "config.zig", "dependencies.zig" }
+  }
