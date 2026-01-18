@@ -1,0 +1,4 @@
+Release/
+Debug/
+Logs/
+.zig-cache/
