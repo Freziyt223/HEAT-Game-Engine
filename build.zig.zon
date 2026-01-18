@@ -40,7 +40,8 @@
 
         .ztracy = .{
             .url = "https://github.com/zig-gamedev/ztracy.git",
-            .hash = "ztracy-0.14.0-dev-zHJSqzUHGQAmhJybhlwtl1QKevUBw4M5YKZqPfWx2y99"
+            .hash = "ztracy-0.14.0-dev-zHJSqzUHGQAmhJybhlwtl1QKevUBw4M5YKZqPfWx2y99",
+            .lazy = true
         }
         
     },

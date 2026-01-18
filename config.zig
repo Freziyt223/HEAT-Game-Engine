@@ -35,7 +35,7 @@ pub const EnableZtracy: bool = true;
 // execute the code needed to set up each profile.
 // You can switch between profiles by calling the corresponding function.
 // ------------------------------------------------------------------------------------
-pub var Profile: ?*const fn() void  = &Debug;
+pub var Profile: ?*const fn() void  = &Release;
 
 fn Debug() void {
   OutputDir = "Debug";
@@ -44,4 +44,5 @@ fn Debug() void {
 
 fn Release() void {
   OutputDir = "Release";
+  Optimize = .ReleaseFast;
 }

@@ -10,13 +10,17 @@ const Colour_T = @import("Colour.zig");
 const Utils = @import("Utils.zig");
 const Self = @This();
 var Allocator: *TrackingAllocator = undefined;
-
+pub var Enable: struct {
+    Logging: bool = false,
+} = .{};
+pub var LogFile: ?Platform.FileSystem.File = null;
 
 // ----------------------------------------------------------------------------------
 // Initializing IO layer
 // ----------------------------------------------------------------------------------
 pub fn init(allocator: *TrackingAllocator) !void {
     Allocator = allocator;
+    if (Enable.Logging) LogFile = try Platform.FileSystem.cwd().openFile("Log.txt", .{});
 }
 
 
@@ -25,32 +29,32 @@ pub fn init(allocator: *TrackingAllocator) !void {
 // ----------------------------------------------------------------------------------
 pub const Console = struct {
     pub fn Print(comptime fmt: []const u8, args: anytype) !void {
-        var out = Platform.File.stdout();
+        var out = Platform.FileSystem.File.stdout();
         return out.print(fmt, args);
     }
     pub fn Error(comptime fmt: []const u8, args: anytype) !void {
-        var err = Platform.File.stderr();
+        var err = Platform.FileSystem.File.stderr();
         return err.print(fmt, args);
     }
     pub fn Read(buf: []u8) !usize {
-        var in = Platform.File.stdin();
+        var in = Platform.FileSystem.File.stdin();
         return in.read(buf);
     }
     pub const Colour = struct {
-        pub fn colourPrint(comptime fmt: []const u8, args: anytype, colour: Colour_T.Colour) !void {
+        pub fn Print(comptime fmt: []const u8, args: anytype, colour: Colour_T.Colour) !void {
             const allocator = Allocator.allocator();
             var buf = try allocator.alloc(u8, std.fmt.count(fmt, args));
             defer allocator.free(buf);
-            try std.fmt.bufPrint(buf[0..buf.len], fmt, args);
-            try Console.Print("\x1b[38;2;{d};{d};{d};m{s}", .{colour.rgba.r, colour.rgba.g, colour.rgba.b, buf});
+            _ = try std.fmt.bufPrint(buf[0..buf.len], fmt, args);
+            try Console.Print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{colour.rgba.r, colour.rgba.g, colour.rgba.b, buf});
         }
 
-        pub fn colourError(comptime fmt: []const u8, args: anytype, colour: Colour_T.Colour) !void {
+        pub fn Error(comptime fmt: []const u8, args: anytype, colour: Colour_T.Colour) !void {
             const allocator = Allocator.allocator();
             var buf = try allocator.alloc(u8, std.fmt.count(fmt, args));
             defer allocator.free(buf);
-            try std.fmt.bufPrint(buf[0..buf.len], fmt, args);
-            try Console.Error("\x1b[38;2;{d};{d};{d};m{s}", .{colour.rgba.r, colour.rgba.g, colour.rgba.b, buf});
+            _ = try std.fmt.bufPrint(buf[0..buf.len], fmt, args);
+            try Console.Error("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{colour.rgba.r, colour.rgba.g, colour.rgba.b, buf});
         }
     };
 };
@@ -59,4 +63,6 @@ pub const Console = struct {
 // ----------------------------------------------------------------------------------
 // File management
 // ----------------------------------------------------------------------------------
-pub const File = Platform.File;
+pub const File = Platform.FileSystem.File;
+pub const Dir = Platform.FileSystem.Dir;
+// Logging

@@ -18,7 +18,8 @@ pub const Self = @This();
 pub fn run() !void {
     try Platform.init(&InternalAllocator);
     try IO.init(&InternalAllocator);
-    try IO.Console.Print("Hello, {s}", .{"world!"});
+    try IO.Console.Print("Hello, {s}\n", .{"world!"});
+    try IO.Console.Colour.Print("Hello, {s}\n", .{"but in red!"}, .{ .rgba = .{.r = 255, .g = 0, .b = 0, .a = 0} });
 }
 
 

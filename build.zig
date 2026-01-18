@@ -46,6 +46,9 @@ pub fn build(b: *std.Build) !void {
   // Load configuration profile(if selected)
   if(config.Profile) |profile| profile();
   b.install_prefix = config.OutputDir;
+  // So we concat path because when specifying exe_dir it will automatically override install prefix
+  // and set it to current directory.
+  // &.{} is a trick to make a quick constant zig slice
   b.exe_dir = try std.mem.concat(allocator, u8,  &.{try std.mem.concat(allocator, u8, &.{config.OutputDir, "/"}), config.BinDir});
   b.lib_dir = try std.mem.concat(allocator, u8, &.{try std.mem.concat(allocator, u8, &.{config.OutputDir, "/"}), config.LibDir});
   
@@ -119,12 +122,12 @@ pub fn build(b: *std.Build) !void {
   // ----------------------------------------------------------------------------------
   // Get all dependencies
   // ----------------------------------------------------------------------------------
-  const ztracy = b.dependency("ztracy", .{
-    .enable_ztracy = ztracy_option,
-    .enable_fibers = ztracy_option,
-  });
-  Engine.addImport("ztracy", ztracy.module("root"));
-  Engine.linkLibrary(ztracy.artifact("tracy"));
+  //const ztracy = b.dependency("ztracy", .{
+  //  .enable_ztracy = ztracy_option,
+  //  .enable_fibers = ztracy_option,
+  //});
+  //Engine.addImport("ztracy", ztracy.module("root"));
+  //Engine.linkLibrary(ztracy.artifact("tracy"));
 
 
   // ----------------------------------------------------------------------------------
