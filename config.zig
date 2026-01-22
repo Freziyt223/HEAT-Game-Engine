@@ -22,10 +22,12 @@ pub var Optimize: std.builtin.OptimizeMode = .ReleaseFast;
 // This section is for enabling or disabling features of compilation.
 // ------------------------------------------------------------------------------------
 /// MultiPlatform means build script will compile engine for many platforms at once
-pub const MultiPlatform: bool = false;
-pub const EnableTests: bool = true;
-pub const GenerateDocs: bool = true;
-pub const EnableZtracy: bool = true;
+pub var MultiPlatform: bool = false;
+pub var EnableTests: bool = true;
+pub var GenerateDocs: bool = true;
+pub var EnableZtracy: bool = true;
+
+pub var BuildExamples: bool = true;
 
 
 // ------------------------------------------------------------------------------------

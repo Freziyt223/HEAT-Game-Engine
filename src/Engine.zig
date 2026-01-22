@@ -9,24 +9,32 @@ pub var InternalAllocator = TrackingAllocator{.InternalAllocator = std.heap.page
 pub const IO = @import("Core/IO.zig");
 pub const Colour = @import("Core/Colour.zig");
 pub const Platform = @import("Platform");
+pub const State = @import("Core/State.zig");
 pub const Self = @This();
 
 
 // ----------------------------------------------------------------------------------
 // Engine entrypoints
 // ----------------------------------------------------------------------------------
-pub fn run() !void {
+// ... needs to be reworked
+
+pub fn init() !void {
     try Platform.init(&InternalAllocator);
     try IO.init(&InternalAllocator);
-    try IO.Console.Print("Hello, {s}\n", .{"world!"});
-    try IO.Console.Colour.Print("Hello, {s}\n", .{"but in red!"}, .{ .rgba = .{.r = 255, .g = 0, .b = 0, .a = 0} });
+    try State.init(&InternalAllocator);
+}
+pub fn deinit() void {
+
 }
 
+pub fn update() !void {
+
+}
+pub fn draw() !void {
+
+}
 
 // ----------------------------------------------------------------------------------
 // User functions
 // ----------------------------------------------------------------------------------
-pub var init: ?*fn(args: std.process.ArgIterator) anyerror!void = null;
-pub var deinit: ?*fn() void = null;
-pub var update: ?*fn() anyerror!void = null;
-pub var draw: ?*fn() anyerror!void = null;
+// ...

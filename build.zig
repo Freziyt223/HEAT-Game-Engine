@@ -2,6 +2,16 @@
 //! This file is executed by the Zig build system when running `zig build`
 //! in this directory.
 //! 
+//! General overview of this build script:
+//! - First we get top-level fields like allocator etc.
+//! - Then we load config profile which specifies how to build everything
+//! - Next Command-Line Interface is setup
+//! - Futher going we setup Engine module and ArrayLists for Modules and Compiles
+//!   to quickly build everything with a loop
+//! - After that we have a platform wrapper layer
+//! - (not implemented now)Then dependencies are loaded
+//! - Then we process all modules and compiles to build them
+//!  
 //! Info on how to use this Zig build system:
 //! - General build system info: https://ziglang.org/documentation/master/#Build-System
 //! - This engine uses "mach" game engine as it's core and expands upon it.
@@ -28,7 +38,7 @@
 // ------------------------------------------------------------------------------------
 const std = @import("std");
 const config = @import("config.zig");
-
+var Engine: *std.Build.Module = undefined;
 
 // ------------------------------------------------------------------------------------
 // This section is for main build function.
@@ -54,7 +64,8 @@ pub fn build(b: *std.Build) !void {
   
   
   // ----------------------------------------------------------------------------------
-  // CLI setup, it parses command-line arguments
+  // CLI(Command-Line Interface) setup with config.
+  // It loads arguments from config or from command-line if provided
   // ----------------------------------------------------------------------------------
   var MultiPlatform = b.option(bool, "MultiPlatform", "This option allows build script to compile engine for each *available* target");
   var Docs = b.option(bool, "Docs", "Specifies if documentation files should be generated");
@@ -82,18 +93,12 @@ pub fn build(b: *std.Build) !void {
   var CompileFiles: std.ArrayList(*std.Build.Step.Compile) = .empty;
   defer CompileFiles.deinit(allocator);
 
-  const Engine = b.addModule("Engine", .{
+  Engine = b.addModule("Engine", .{
     .root_source_file = b.path("src/Engine.zig"),
     .target = target,
     .optimize = optimize,
   });
   try Modules.append(allocator, Engine);
-  const Engine_As_Library = b.addLibrary(.{
-    .linkage = .static,
-    .name = "Engine",
-    .root_module = Engine,
-  });
-  try CompileFiles.append(allocator, Engine_As_Library);
 
 
   // ----------------------------------------------------------------------------------
@@ -129,34 +134,20 @@ pub fn build(b: *std.Build) !void {
   //Engine.addImport("ztracy", ztracy.module("root"));
   //Engine.linkLibrary(ztracy.artifact("tracy"));
 
-
-  // ----------------------------------------------------------------------------------
-  // Setup executable, build it, add run step so it will be runned with 'zig build run'
-  // and generate docs if specified.
-  // ----------------------------------------------------------------------------------
-  const exe = b.addExecutable(.{
-    .name = "HEAT",
-    .root_module = b.createModule(.{
-      .root_source_file = .{.cwd_relative = "src/Executable.zig"},
+  if (config.BuildExamples) {
+    try CompileFiles.append(allocator, addExecutable(b, .{
+      .name = "SimpleIO",
+      .user_app = b.createModule(.{
+        .root_source_file = .{ .cwd_relative = "Examples/SimpleIO.zig" },
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{.{.name = "Engine", .module = Engine}}
+      }),
       .target = target,
-      .optimize = optimize,
-      .imports = &.{.{.name = "Engine", .module = Engine}}
-    }),
-  });
-  try CompileFiles.append(allocator, exe);
-
-
-  // ----------------------------------------------------------------------------------
-  // Make a run step, this will run the exe when 'zig build run' is used.
-  // Everything passed after 'zig build run' will be in b.args(look below) and 
-  // passed to the exe.
-  // ----------------------------------------------------------------------------------
-  const run_step = b.step("run", "Run the app");
-  const run_cmd = b.addRunArtifact(exe);
-  run_step.dependOn(&run_cmd.step);
-  run_cmd.step.dependOn(b.getInstallStep());
-  if (b.args) |args| run_cmd.addArgs(args);
-
+      .optimize = optimize
+    }));
+    
+  }
 
   // ----------------------------------------------------------------------------------
   // Setup all modules 
@@ -196,5 +187,29 @@ pub fn build(b: *std.Build) !void {
     test_step.dependOn(&compile_tests.step);
   }
 
-  
 }
+
+
+// ----------------------------------------------------------------------------------
+// User functions section
+// ----------------------------------------------------------------------------------
+pub fn addExecutable(b: *std.Build, Options: ExecutableOptions) *std.Build.Step.Compile {
+  return b.addExecutable(.{
+    .name = Options.name,
+    .root_module = b.addModule(b.fmt("{s}-entrypoint", .{Options.name}), .{
+      .root_source_file = .{ .cwd_relative = "src/Entrypoint.zig" },
+      .target = Options.target,
+      .optimize = Options.optimize,
+      .imports = &.{
+        .{.name = "App", .module = Options.user_app},
+        .{.name = "Engine", .module = Engine}}
+    })
+  });
+}
+
+pub const ExecutableOptions = struct {
+  name: []const u8,
+  user_app: *std.Build.Module,
+  target: std.Build.ResolvedTarget,
+  optimize: std.builtin.OptimizeMode
+};

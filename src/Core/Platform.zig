@@ -72,3 +72,11 @@ pub fn FileSystem(comptime File_Impl: type, comptime Dir_Impl: type, comptime Im
 pub const FileError = error {
     NullHandle
 };
+
+
+// ----------------------------------------------------------------------------------
+// Window segment
+// ----------------------------------------------------------------------------------
+pub fn Window(comptime _: type) type {
+
+}
