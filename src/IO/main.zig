@@ -20,6 +20,8 @@ pub const Colour = extern union {
 // Console IO
 pub const Console = struct {
     pub fn Print(comptime fmt: []const u8, args: anytype) !void {
+        const Zone = Engine.ztracy.ZoneNC(@src(), "Console print", 0xFF0000);
+        defer Zone.End();
         const allocator = Allocator.allocator();
         const buf = try std.fmt.allocPrint(allocator, fmt, args);
         defer allocator.free(buf);
@@ -27,10 +29,14 @@ pub const Console = struct {
         return std.fs.File.stdout().writeAll(buf);
     }
     pub fn Read(buf: []u8) !usize {
+        const Zone = Engine.ztracy.ZoneNC(@src(), "Console read", 0xFF0000);
+        defer Zone.End();
         return std.fs.File.stdin().read(buf);
     }
     /// Works only on terminals that support different colours
     pub fn ColourPrint(comptime fmt: []const u8, args: anytype, colour: Colour) !void {
+        const Zone = Engine.ztracy.ZoneNC(@src(), "Console colour crint", 0xFF0000);
+        defer Zone.End();
         const allocator = Allocator.allocator();
         const message = try std.fmt.allocPrint(allocator, fmt, args);
         defer allocator.free(message);

@@ -3,6 +3,8 @@
 const std = @import("std");
 const config = @import("config.zig");
 
+var ztracy_mod: *std.Build.Module = undefined;
+var ztracy_art: *std.Build.Step.Compile = undefined;
 
 // =========================================================================================
 // Main build entrypoint
@@ -21,10 +23,10 @@ pub fn build(b: *std.Build) void {
         .enable_ztracy = enable_tracy,
         .enable_fibers = enable_tracy
     });
-    const ztracy_mod = ztracy_dep.module("root");
+    ztracy_mod = ztracy_dep.module("root");
     ztracy_mod.optimize = optimize;
     ztracy_mod.strip = true;
-    const ztracy_art = ztracy_dep.artifact("tracy");
+    ztracy_art = ztracy_dep.artifact("tracy");
 
 
     // =====================================================================================
@@ -38,6 +40,14 @@ pub fn build(b: *std.Build) void {
         .no_builtin = true,
     });
     TrackingAllocator.linkLibrary(ztracy_art);
+
+    _ = b.addModule("State", .{
+        .root_source_file = b.path("src/State/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .strip = true,
+        .no_builtin = true
+    });
 
     const IO = b.addModule("IO", .{
         .root_source_file = b.path("src/IO/main.zig"),
@@ -53,11 +63,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .imports = &.{
             .{.name = "IO", .module = IO},
-            .{.name = "TrackingAllocator", .module = TrackingAllocator}
+            .{.name = "TrackingAllocator", .module = TrackingAllocator},
+            .{.name = "ztracy", .module = ztracy_mod}
         },
         .strip = true,
         .no_builtin = true
     });
+    Engine.linkLibrary(ztracy_art);
     IO.addImport("Root", Engine);
 }
 
@@ -71,13 +83,23 @@ pub const ExecutableOptions = struct {
     optimize: std.builtin.OptimizeMode
 };
 pub fn addExecutable(engine_builder: *std.Build, options: ExecutableOptions) *std.Build.Step.Compile {
+    const State = engine_builder.modules.get("State").?;
+    options.user_module.addImport("State", State);
+
+    const Entrypoint = engine_builder.addModule("Entrypoint", .{
+        .root_source_file = engine_builder.path("src/main.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+        .imports = &.{
+            .{.name = "User", .module = options.user_module},
+            .{.name = "State", .module = State},
+            .{.name = "ztracy", .module = ztracy_mod}
+        }
+    });
+    Entrypoint.linkLibrary(ztracy_art);
+
     return engine_builder.addExecutable(.{
         .name = options.name,
-        .root_module = engine_builder.addModule("Entrypoint", .{
-            .root_source_file = engine_builder.path("src/main.zig"),
-            .target = options.target,
-            .optimize = options.optimize,
-            .imports = &.{.{.name = "User", .module = options.user_module}}
-        }),
+        .root_module = Entrypoint,
     });
 }
