@@ -20,22 +20,29 @@ pub fn main() !void {
     const ConfZone = ztracy.ZoneN(@src(), "Conf");
     if (@hasDecl(User, "conf")) User.conf();
     ConfZone.End();
-
-    const allocator = Root.InternalAllocator.allocator();
-    Thread.ThreadCount = try std.Thread.getCpuCount();
-    const Threads = try allocator.alloc(std.Thread, Thread.ThreadCount - 1);
     
     const InitZone = ztracy.ZoneN(@src(), "Init");
     if (@hasDecl(User, "init")) try User.init();
     InitZone.End();
     defer if (@hasDecl(User, "deinit")) User.deinit();
-    
+    // Update loop
+    Thread.ThreadCount = try std.Thread.getCpuCount();
+    if (Thread.ThreadCount == 1) try SingleThreading()
+    else try MultiThreading();
+   
+}
+
+fn MultiThreading() !void {
+    const allocator = Root.InternalAllocator.allocator();
+    const Threads = try allocator.alloc(std.Thread, Thread.ThreadCount - 1);
+     
     try Thread.Threads.init(Threads[0..Thread.ThreadCount - 1], QueueAllocator.allocator());
     defer Thread.Threads.deinit();
 
-    const Loop = ztracy.ZoneNC(@src(), "Update loop", 0xB96447);
-    var Timer = try std.time.Timer.start();
+    
     if (@hasDecl(User, "update")) {
+        const Loop = ztracy.ZoneNC(@src(), "Update loop", 0xB96447);
+        var Timer = try std.time.Timer.start();
         var Tick_Rates: [User.update.len]struct {
             last: u64,
             interval: u64
@@ -61,6 +68,39 @@ pub fn main() !void {
                 }
             }
         }
+        Loop.End();
+    } 
+}
+
+fn SingleThreading() !void {
+    if (@hasDecl(User, "update")) {
+        const Loop = ztracy.ZoneNC(@src(), "Update loop", 0xB96447);
+        var Timer = try std.time.Timer.start();
+        var Tick_Rates: [User.update.len]struct {
+            last: u64,
+            interval: u64
+        } = undefined;
+        inline for (User.update, 0..) |update_struct, i| {
+            if (update_struct.tick_rate) |rate| {
+                Tick_Rates[i] = .{ .last = 0, .interval = std.time.ns_per_s / rate };
+            } else {
+                Tick_Rates[i] = .{ .last = 0, .interval = 0 };
+            }
+        }
+
+        while (State.Running) {
+            const now = Timer.read();
+            inline for (User.update, 0..) |update_struct, i| {
+                if (@hasDecl(update_struct, "update")) {
+                    const rate = &Tick_Rates[i];
+                    if (rate.interval != 0) {if (now - rate.last >= rate.interval) {
+                        rate.last += rate.interval;
+                        try update_struct.update();
+                    }}
+                    else try update_struct.update();
+                }
+            }
+        }
+        Loop.End();
     }
-    Loop.End();
 }

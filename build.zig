@@ -1,7 +1,7 @@
 // =========================================================================================
-// Imports
+// Imports and top-level fields
 const std = @import("std");
-const config = @import("config.zig");
+pub const config = @import("config.zig");
 
 var ztracy_mod: *std.Build.Module = undefined;
 var ztracy_art: *std.Build.Step.Compile = undefined;
