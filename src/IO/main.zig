@@ -19,29 +19,37 @@ pub const Colour = extern union {
 // =========================================================================================
 // Console IO
 pub const Console = struct {
+    var Mutex = std.Thread.Mutex{};
     pub fn Print(comptime fmt: []const u8, args: anytype) !void {
+        Mutex.lock();
+        defer Mutex.unlock();
         const Zone = Engine.ztracy.ZoneNC(@src(), "Console print", 0xFF0000);
         defer Zone.End();
-        const allocator = Allocator.allocator();
-        const buf = try std.fmt.allocPrint(allocator, fmt, args);
-        defer allocator.free(buf);
+        var buf: [1024]u8 = undefined;
+        var stdout = std.fs.File.stdout().writer(buf[0..buf.len]);
+        try stdout.interface.print(fmt, args);
+        try stdout.interface.flush();
 
-        return std.fs.File.stdout().writeAll(buf);
     }
     pub fn Read(buf: []u8) !usize {
+        Mutex.lock();
+        defer Mutex.unlock();
         const Zone = Engine.ztracy.ZoneNC(@src(), "Console read", 0xFF0000);
         defer Zone.End();
         return std.fs.File.stdin().read(buf);
     }
     /// Works only on terminals that support different colours
     pub fn ColourPrint(comptime fmt: []const u8, args: anytype, colour: Colour) !void {
-        const Zone = Engine.ztracy.ZoneNC(@src(), "Console colour crint", 0xFF0000);
+        Mutex.lock();
+        defer Mutex.unlock();
+        const Zone = Engine.ztracy.ZoneNC(@src(), "Console colour crint", 0xFFEE00);
         defer Zone.End();
-        const allocator = Allocator.allocator();
-        const message = try std.fmt.allocPrint(allocator, fmt, args);
-        defer allocator.free(message);
-
-        return Console.Print("\x1b[38;2;{d};{d};{d}m{s}\x1b[0m", .{colour.rgba.r, colour.rgba.g, colour.rgba.b, message});
+        var buf: [1024]u8 = undefined;
+        var stdout = std.fs.File.stdout().writer(buf[0..buf.len]);
+        try stdout.interface.print("\x1b[38;2;{d};{d};{d}m", .{colour.rgba.r, colour.rgba.g, colour.rgba.b});
+        try stdout.interface.print(fmt, args);
+        try stdout.interface.print("\x1b[0m", .{});
+        try stdout.interface.flush();
     }
 };
 
