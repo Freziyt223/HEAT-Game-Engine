@@ -3,6 +3,8 @@
 const std = @import("std");
 const Engine = @import("Root");
 pub var Allocator = &Engine.InternalAllocator;
+pub var IO: std.Io = undefined;
+
 
 
 // =========================================================================================
@@ -23,15 +25,18 @@ pub const Console = struct {
         const Zone = Engine.ztracy.ZoneNC(@src(), "Console print", 0xFF0000);
         defer Zone.End();
         const allocator = Allocator.allocator();
-        const buf = try std.fmt.allocPrint(allocator, fmt, args);
+        const count = std.fmt.count(fmt, args);
+        const buf = try allocator.alloc(u8, count);
         defer allocator.free(buf);
+        var stdout = std.Io.File.stdout().writer(IO, buf);
 
-        return std.fs.File.stdout().writeAll(buf);
+        try stdout.interface.print(fmt, args);
+        try stdout.flush();
     }
     pub fn Read(buf: []u8) !usize {
         const Zone = Engine.ztracy.ZoneNC(@src(), "Console read", 0xFF0000);
         defer Zone.End();
-        return std.fs.File.stdin().read(buf);
+        return std.Io.File.stdin().readStreamingAll(IO, buf);
     }
     /// Works only on terminals that support different colours
     pub fn ColourPrint(comptime fmt: []const u8, args: anytype, colour: Colour) !void {
@@ -48,4 +53,4 @@ pub const Console = struct {
 
 // =========================================================================================
 // FileSystem
-pub const FileSystem = std.fs;
+pub const FileSystem = std.Io;

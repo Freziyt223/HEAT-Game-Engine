@@ -80,12 +80,15 @@ fn remap(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: us
     const result = allocat.vtable.remap(allocat.ptr, buf, alignment, new_len, ret_addr);
     if (result != null) {
         if (new_len > buf.len) {
-            self.Allocated += new_len - buf.len;
-            TotalAllocated += new_len - buf.len;
-        } else {
-            self.Allocated -= new_len - buf.len;
-            TotalAllocated -= new_len - buf.len;
+            const delta = new_len - buf.len;
+            self.Allocated += delta;
+            TotalAllocated += delta;
+        } else if (new_len < buf.len) {
+            const delta = buf.len - new_len;
+            self.Allocated -= delta;
+            TotalAllocated -= delta;
         }
+
     }
     return result;
 }
