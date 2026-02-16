@@ -1,13 +1,29 @@
 .{
     .name = .Engine,
     .version = "0.0.1",
-    .minimum_zig_version = "0.15.0",
+    .minimum_zig_version = "0.15.2",
     .paths = .{"", "src"},
     .fingerprint = 0xef041fbb6fec1090,
     .dependencies = .{
         .ztracy = .{
             .url = "https://github.com/zig-gamedev/ztracy.git",
             .hash = "ztracy-0.14.0-dev-zHJSqzUHGQAmhJybhlwtl1QKevUBw4M5YKZqPfWx2y99"
+        },
+        .zigzag = .{
+            .url = "https://github.com/meszmate/zigzag.git",
+            .hash = "zigzag-0.1.0-YXwYSz42BgBxqVNb47Wj_KSiC0LIVIRS1-J2lHPGv9AG"
+        },
+        .zglfw = .{
+            .url = "https://github.com/zig-gamedev/zglfw.git",
+            .hash = "zglfw-0.10.0-dev-zgVDNES4IQAAXAcsFiHfmadlpDCHhF2cUqWxBGIViyU6"
+        },
+        .vulkan_zig = .{
+            .url = "https://github.com/Snektron/vulkan-zig.git#zig-0.15-compat",
+            .hash = "vulkan-0.0.0-r7YtxztIAwBc30xIMx4tzfUcEmc7goWiFJkR13yeLfi8"
+        },
+        .vulkan_headers = .{
+            .url = "https://github.com/KhronosGroup/Vulkan-Headers.git",
+            .hash = "N-V-__8AAOLyQgIPZfsrb-a_A1MAgE_EA22vGuvIZUW-yJwC"
         }
     }
 }

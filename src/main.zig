@@ -2,12 +2,11 @@ const std = @import("std");
 const User = @import("User");
 const State = @import("State");
 const ztracy = @import("ztracy");
+const Renderer = @import("Renderer");
 const Thread = @import("Thread");
 const Root = @import("Root");
 const TrackingAllocator = @import("TrackingAllocator");
-pub var QueueAllocator = TrackingAllocator{.Allocator = std.heap.page_allocator, .Category = "Execution queue"};
-
-
+const buildOptions = @import("buildOptions");
 // To optimize runtime we do checks in runtime and for while loop we select 
 // while loop that has only declarated fields so it doesn't need to check
 // for existance of the same value each time
@@ -16,27 +15,43 @@ pub fn main() !void {
     defer Zone.End();
     ztracy.SetThreadName("Main");
 
-    // conf will run before any other code
+    Thread.ThreadCount = try std.Thread.getCpuCount();
+    const SingleThread = std.heap.DebugAllocator(.{});
+    const MultiThread = std.heap.DebugAllocator(.{.thread_safe = true});
+    var gpa = if (Thread.ThreadCount > 1) MultiThread.init else SingleThread.init;
+    defer std.debug.assert(gpa.deinit() == .ok);
+
+    State.MemoryCapacity = @as(usize, @intCast(try std.process.totalSystemMemory()));
+
+    Root.InternalAllocator = TrackingAllocator{.Allocator = gpa.allocator(), .Category = "Internal"};
+    Root.QueueAllocator = TrackingAllocator{.Allocator = gpa.allocator(), .Category = "Queue"};
+
+    try Renderer.zglfw.init();
+    defer Renderer.zglfw.terminate();
+    // conf will overwrite things 
     const ConfZone = ztracy.ZoneN(@src(), "Conf");
     if (@hasDecl(User, "conf")) User.conf();
     ConfZone.End();
-    
+    var arg = try std.process.argsWithAllocator(Root.InternalAllocator.allocator());
+    defer arg.deinit();
     const InitZone = ztracy.ZoneN(@src(), "Init");
-    if (@hasDecl(User, "init")) try User.init();
+    if (@hasDecl(User, "init")) {
+        try User.init(.{ .Args = arg, .Allocator = gpa.allocator() });
+    }
     InitZone.End();
     defer if (@hasDecl(User, "deinit")) User.deinit();
     // Update loop
-    Thread.ThreadCount = try std.Thread.getCpuCount();
-    if (Thread.ThreadCount == 1) try SingleThreading()
-    else try MultiThreading();
-   
+    
+    //if (Thread.ThreadCount == 1) try SingleThreading()
+    //else try MultiThreading();
+    try SingleThreading();
 }
 
 fn MultiThreading() !void {
-    const allocator = Root.InternalAllocator.allocator();
+    const allocator = Root.QueueAllocator.allocator();
     const Threads = try allocator.alloc(std.Thread, Thread.ThreadCount - 1);
      
-    try Thread.Threads.init(Threads[0..Thread.ThreadCount - 1], QueueAllocator.allocator());
+    try Thread.Threads.init(Threads[0..Thread.ThreadCount - 1], Root.QueueAllocator.allocator());
     defer Thread.Threads.deinit();
 
     
@@ -56,6 +71,7 @@ fn MultiThreading() !void {
         }
 
         while (State.Running) {
+            Renderer.zglfw.pollEvents();
             const now = Timer.read();
             inline for (User.update, 0..) |update_struct, i| {
                 if (@hasDecl(update_struct, "update")) {
@@ -89,6 +105,7 @@ fn SingleThreading() !void {
         }
 
         while (State.Running) {
+            Renderer.zglfw.pollEvents();
             const now = Timer.read();
             inline for (User.update, 0..) |update_struct, i| {
                 if (@hasDecl(update_struct, "update")) {

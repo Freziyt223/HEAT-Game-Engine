@@ -4,6 +4,9 @@ const std = @import("std");
 const Engine = @import("Root");
 pub var Allocator = &Engine.InternalAllocator;
 
+pub var EnableLogging: bool = false;
+pub var LogLocation: []const u8 = "logs/latest.txt";
+
 
 // =========================================================================================
 // Usefull fields

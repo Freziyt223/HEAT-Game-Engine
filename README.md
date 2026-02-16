@@ -11,6 +11,7 @@ Use b.option(bool, "optimize", ...) or set it manually.
 - [Requirements](#requirements)
 
 ## What this repository is
+**For now only singlethreading mode is capable of managing windows with GLFW without bugs**
 It is a repository for a game engine, it is made for saving my work and maybe a community work.
 I'm making it as a hobby.
 
@@ -21,11 +22,16 @@ I've made an example "game" on this repository: [link](https://github.com/Freziy
 - Print to console,
 - Print colourful text to console(if terminal supports colour),
 - Has proper init, update and deinit functions,
-- Multithreading queue,
+- Multithreading queue,(only without window management with GLFW)
 - Stage multiple update function with specific tick-rates(uses queue),
+
+Windowing and terminal user interface is still not ready, so don't use it.
+I'd be very pleased if anyone would help me with setting up glfw windowing or TUI.
 
 ## Dependencies
 **ztracy-master(not required)** - This is a profiling tool so you can track perfomance of the engine
+**zigzag-master(required)** - This is a very powerful Terminal User Interface(TUI)
+**zglfw-master(required)** - This is a binding for a GLFW, which is a library for working with windows(window and not microsoft windows)
 
 # Requirements
 **Remark**

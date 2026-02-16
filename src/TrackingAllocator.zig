@@ -4,8 +4,8 @@
 // Imports and top-level fields
 const std = @import("std");
 const ztracy = @import("ztracy");
+const State = @import("State");
 const Self = @This();
-pub var TotalAllocated: usize = 0;
 
 // This field will only be initialized on making an allocator
 Allocator: std.mem.Allocator,
@@ -40,7 +40,10 @@ fn alloc(state: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: 
     const result = allocat.vtable.alloc(allocat.ptr, len, alignment, ret_addr);
     if (result != null) {
         self.Allocated += len;
-        TotalAllocated += len;
+        State.UsedMemory += len;
+        if (State.UsedMemory > State.PeakMemoryUsage) {
+            State.PeakMemoryUsage = State.UsedMemory;
+        }
     }
     return result;
 }
@@ -51,10 +54,13 @@ fn resize(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: u
     if (result) {
         if (new_len > buf.len) {
             self.Allocated += new_len - buf.len;
-            TotalAllocated += new_len - buf.len;
+            State.UsedMemory += new_len - buf.len;
+            if (State.UsedMemory > State.PeakMemoryUsage) {
+                State.PeakMemoryUsage = State.UsedMemory;
+            }
         } else {
             self.Allocated -= buf.len - new_len;
-            TotalAllocated -= buf.len - new_len;
+            State.UsedMemory -= buf.len - new_len;
         }
     }
     return result;
@@ -63,7 +69,7 @@ fn free(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, ret_addr: us
     const self: *Self = @ptrCast(@alignCast(state));
     const allocat = InternalAllocator.allocator();
     self.Allocated -= buf.len;
-    TotalAllocated -= buf.len;
+    State.UsedMemory -= buf.len;
     allocat.vtable.free(allocat.ptr, buf, alignment, ret_addr);
 }
 fn remap(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
@@ -74,11 +80,14 @@ fn remap(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: us
         if (new_len > buf.len) {
             const delta = new_len - buf.len;
             self.Allocated += delta;
-            TotalAllocated += delta;
+            State.UsedMemory += delta;
+            if (State.UsedMemory > State.PeakMemoryUsage) {
+                State.PeakMemoryUsage = State.UsedMemory;
+            }
         } else if (new_len < buf.len) {
             const delta = buf.len - new_len;
             self.Allocated -= delta;
-            TotalAllocated -= delta;
+            State.UsedMemory -= delta;
         }
     }
     return result;

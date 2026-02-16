@@ -1,5 +1,6 @@
 const std = @import("std");
 const ztracy = @import("ztracy");
+const State = @import("State");
 
 pub const Queue = struct {
     const Self = @This();
@@ -53,18 +54,6 @@ pub const Queue = struct {
             .deinit_fn = Wrapper.deinit,
         });
     }
-
-    pub fn popAndExecute(self: *Self) anyerror!void {
-        self.mutex.lock();
-        if (self.queue.items.len == 0) {
-            self.mutex.unlock();
-            return;
-        }
-        const task = self.queue.swapRemove(0);
-        self.mutex.unlock();
-        defer task.deinit_fn(task.args_ptr, self.allocator);
-        try task.exec_fn(task.args_ptr);
-    }
 };
 
 pub const ExecutionQueue = struct{
@@ -76,12 +65,9 @@ pub const ExecutionQueue = struct{
     pub fn worker(self: *ExecutionQueue) !void {
         while (self.running) {
             self.queue.mutex.lock();
-            
-            // Чекаємо, поки з'явиться робота АБО поки двигун не зупинять
+
             while (self.queue.queue.items.len == 0 and self.running) {
-                // Wait відпускає м'ютекс і ставить потік "на паузу"
                 self.cond.wait(&self.queue.mutex);
-                // Коли потік прокидається, він знову автоматично закриває м'ютекс
             }
 
             if (!self.running) {
@@ -89,12 +75,12 @@ pub const ExecutionQueue = struct{
                 break;
             }
 
-            // Забираємо задачу
             const task = self.queue.queue.swapRemove(0);
             self.queue.mutex.unlock();
 
-            // Виконуємо
-            defer task.deinit_fn(task.args_ptr, self.queue.allocator);
+            defer {
+                task.deinit_fn(task.args_ptr, self.queue.allocator);
+            }
             task.exec_fn(task.args_ptr) catch |err| {
                 std.log.err("Task failed: {}", .{err});
             };
@@ -121,6 +107,9 @@ pub const ExecutionQueue = struct{
         self.running = false;
         // Будимо УСІ потоки, щоб вони побачили running = false і завершилися
         self.cond.broadcast(); 
+        
         for (self.threads) |thread| thread.join();
+        self.queue.queue.deinit(self.queue.allocator);
+        self.queue.allocator.free(self.threads);
     }
 };

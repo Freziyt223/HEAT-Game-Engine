@@ -12,7 +12,11 @@ pub var install_prefix: []const u8 = "";
 
 // =========================================================================================
 // Toggleables
-pub var enable_tracy = false;
+pub var Enable: struct {
+    ztracy: bool = true,
+    zigzag: bool = true,
+    vulkan: bool = true,
+} = .{};
 
 
 // =========================================================================================
