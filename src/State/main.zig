@@ -13,3 +13,4 @@ pub var Mutex = std.Thread.Mutex{};
 pub var UsedMemory: usize = 0;
 pub var MemoryCapacity: usize = 0;
 pub var PeakMemoryUsage: usize = 0;
+pub var Windows: std.ArrayList(Renderer.Window) = .empty;

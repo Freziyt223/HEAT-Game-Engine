@@ -42,9 +42,9 @@ pub fn main() !void {
     defer if (@hasDecl(User, "deinit")) User.deinit();
     // Update loop
     
-    //if (Thread.ThreadCount == 1) try SingleThreading()
-    //else try MultiThreading();
-    try SingleThreading();
+    if (Thread.ThreadCount == 1) try SingleThreading()
+    else try MultiThreading();
+    //try SingleThreading();
 }
 
 fn MultiThreading() !void {
@@ -53,7 +53,6 @@ fn MultiThreading() !void {
      
     try Thread.Threads.init(Threads[0..Thread.ThreadCount - 1], Root.QueueAllocator.allocator());
     defer Thread.Threads.deinit();
-
     
     if (@hasDecl(User, "update")) {
         const Loop = ztracy.ZoneNC(@src(), "Update loop", 0xB96447);
@@ -74,18 +73,20 @@ fn MultiThreading() !void {
             Renderer.zglfw.pollEvents();
             const now = Timer.read();
             inline for (User.update, 0..) |update_struct, i| {
-                if (@hasDecl(update_struct, "update")) {
-                    const rate = &Tick_Rates[i];
-                    if (rate.interval != 0) {if (now - rate.last >= rate.interval) {
-                        rate.last += rate.interval;
-                        try Thread.Threads.submit(&update_struct.update, .{});
-                    }}
-                    else try Thread.Threads.submit(&update_struct.update, .{});
+                const rate = &Tick_Rates[i];
+                if (rate.interval != 0) if (now - rate.last >= rate.interval) {
+                    rate.last += rate.interval;
+                    if (@hasDecl(update_struct, "update")) try Thread.Threads.submit(&update_struct.update, .{});
+                    if (@hasDecl(update_struct, "main")) try update_struct.main();
                 }
+                else {
+                    if (@hasDecl(update_struct, "update")) try Thread.Threads.submit(&update_struct.update, .{});
+                    if (@hasDecl(update_struct, "main")) try update_struct.main();
+                };
             }
         }
         Loop.End();
-    } 
+    }
 }
 
 fn SingleThreading() !void {
@@ -108,14 +109,15 @@ fn SingleThreading() !void {
             Renderer.zglfw.pollEvents();
             const now = Timer.read();
             inline for (User.update, 0..) |update_struct, i| {
-                if (@hasDecl(update_struct, "update")) {
-                    const rate = &Tick_Rates[i];
-                    if (rate.interval != 0) {if (now - rate.last >= rate.interval) {
-                        rate.last += rate.interval;
-                        try update_struct.update();
-                    }}
-                    else try update_struct.update();
-                }
+                const rate = &Tick_Rates[i];
+                if (rate.interval != 0) if (now - rate.last >= rate.interval) {
+                    rate.last += rate.interval;
+                    if (@hasDecl(update_struct, "main")) try update_struct.main();
+                    if (@hasDecl(update_struct, "update")) try update_struct.update();
+                } else {
+                    if (@hasDecl(update_struct, "main")) try update_struct.main();
+                    if (@hasDecl(update_struct, "update")) try update_struct.update();
+                };
             }
         }
         Loop.End();

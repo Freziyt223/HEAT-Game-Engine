@@ -131,7 +131,9 @@ pub fn build(b: *std.Build) void {
             .{.name = "ztracy", .module = ztracy_mod},
             .{.name = "zglfw", .module = zglfw_mod},
             .{.name = "types", .module = types},
-            .{.name = "Interface", .module = Interface}
+            .{.name = "Interface", .module = Interface},
+            .{.name = "TrackingAllocator", .module = TrackingAllocator},
+            .{.name = "IO", .module = IO}
         },
         //.strip = true
     });
@@ -144,6 +146,7 @@ pub fn build(b: *std.Build) void {
         .optimize = Options.optimize,
         .imports = &.{
             .{.name = "Renderer", .module = Renderer},
+            .{.name = "Interface", .module = Interface},
         },
         //.strip = true
     });
