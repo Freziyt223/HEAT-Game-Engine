@@ -29,9 +29,9 @@ Windowing and terminal user interface is still not ready, so don't use it.
 I'd be very pleased if anyone would help me with setting up glfw windowing or TUI.
 
 ## Dependencies
-**ztracy-master(not required)** - This is a profiling tool so you can track perfomance of the engine
-**zigzag-master(required)** - This is a very powerful Terminal User Interface(TUI)
-**zglfw-master(required)** - This is a binding for a GLFW, which is a library for working with windows(window and not microsoft windows)
+**ztracy-master(not required)** - This is a profiling tool so you can track perfomance of the engine  
+**zigzag-master(required)** - This is a very powerful Terminal User Interface(TUI)  
+**zglfw-master(required)** - This is a binding for a GLFW, which is a library for working with  windows(window and not microsoft windows)
 
 # Requirements
 **Remark**
