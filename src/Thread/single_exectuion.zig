@@ -59,55 +59,25 @@ pub const Queue = struct {
 pub const ExecutionQueue = struct{
     queue: Queue,
     running: bool = true,
-    threads: []std.Thread,
     cond: std.Thread.Condition = .{},
 
-    pub fn worker(self: *ExecutionQueue) void {
-        while (self.running) {
-            self.queue.mutex.lock();
-
-            while (self.queue.queue.items.len == 0 and self.running) {
-                self.cond.wait(&self.queue.mutex);
-            }
-
-            if (!self.running) {
-                self.queue.mutex.unlock();
-                break;
-            }
-
-            const task = self.queue.queue.swapRemove(0);
-            self.queue.mutex.unlock();
-
-            defer task.deinit_fn(task.args_ptr, self.queue.allocator);
-            task.exec_fn(task.args_ptr) catch |err| {
-                std.log.err("Task failed: {}", .{err});
-            };
-        }
-    }
-
-    pub fn init(self: *ExecutionQueue, threads_slice: []std.Thread, allocator: std.mem.Allocator) !void {
+    pub fn init(self: *ExecutionQueue, allocator: std.mem.Allocator) !void {
         self.queue = try Queue.init(allocator);
-        self.threads = threads_slice;
         self.running = true;
-
-        for (self.threads) |*thread| {
-            // Передаємо вказівник на стабільну глобальну чергу
-            thread.* = try std.Thread.spawn(.{ .allocator = allocator }, worker, .{self});
-        }
     }
     pub fn submit(self: *ExecutionQueue, comptime function: anytype, args: anytype) !void {
         try self.queue.push(function, args);
-        // Будимо ОДИН вільний потік, щоб він забрав задачу
-        self.cond.signal(); 
+    }
+
+    pub fn pop(self: *ExecutionQueue) !void {
+        if (self.queue.queue.items.len == 0 or !self.running) return;
+        const task = self.queue.queue.swapRemove(0);
+        defer task.deinit_fn(task.args_ptr, self.queue.allocator);
+        try task.exec_fn(task.args_ptr);
     }
     
     pub fn deinit(self: *ExecutionQueue) void {
         self.running = false;
-        // Будимо УСІ потоки, щоб вони побачили running = false і завершилися
-        self.cond.broadcast(); 
-        
-        for (self.threads) |thread| thread.join();
         self.queue.queue.deinit(self.queue.allocator);
-        self.queue.allocator.free(self.threads);
     }
 };

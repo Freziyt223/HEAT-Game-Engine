@@ -11,10 +11,14 @@ const buildOptions = @import("buildOptions");
 // while loop that has only declarated fields so it doesn't need to check
 // for existance of the same value each time
 pub fn main() !void {
+    // ============================================================================================
+    // Ztracy setup
     const Zone = ztracy.ZoneN(@src(), "Main");
     defer Zone.End();
     ztracy.SetThreadName("Main");
 
+    // ============================================================================================
+    // Setting up allocators
     Thread.ThreadCount = try std.Thread.getCpuCount();
     const SingleThread = std.heap.DebugAllocator(.{});
     const MultiThread = std.heap.DebugAllocator(.{.thread_safe = true});
@@ -26,33 +30,49 @@ pub fn main() !void {
     Root.InternalAllocator = TrackingAllocator{.Allocator = gpa.allocator(), .Category = "Internal"};
     Root.QueueAllocator = TrackingAllocator{.Allocator = gpa.allocator(), .Category = "Queue"};
 
+    // GLFW initialing
     try Renderer.zglfw.init();
     defer Renderer.zglfw.terminate();
-    // conf will overwrite things 
+    
+
+    // ============================================================================================
+    // Running user code
+    // conf function for configuring engine beforehand
     const ConfZone = ztracy.ZoneN(@src(), "Conf");
-    if (@hasDecl(User, "conf")) User.conf();
+        if (@hasDecl(User, "conf")) User.conf();
     ConfZone.End();
+    // Running init function
     var arg = try std.process.argsWithAllocator(Root.InternalAllocator.allocator());
     defer arg.deinit();
     const InitZone = ztracy.ZoneN(@src(), "Init");
-    if (@hasDecl(User, "init")) {
-        try User.init(.{ .Args = arg, .Allocator = gpa.allocator() });
-    }
+        if (@hasDecl(User, "init")) {
+            try User.init(.{ .Args = arg, .Allocator = gpa.allocator() });
+        }
     InitZone.End();
-    defer if (@hasDecl(User, "deinit")) User.deinit();
-    // Update loop
+    // And finaly deinit function
+        defer if (@hasDecl(User, "deinit")) User.deinit();
     
-    if (Thread.ThreadCount == 1) try SingleThreading()
+    
+    // ============================================================================================
+    // User update functions.
+    // Queue is separated for singlethreading and multithreading versions.
+    if (Thread.ThreadCount == 1 or !State.MultiThreading) try SingleThreading()
     else try MultiThreading();
     //try SingleThreading();
 }
 
+
+// ============================================================================================
+// Code outside of main functions to not pollute it with lots of code
+// Those are loops
 fn MultiThreading() !void {
     const allocator = Root.QueueAllocator.allocator();
     const Threads = try allocator.alloc(std.Thread, Thread.ThreadCount - 1);
      
     try Thread.Threads.init(Threads[0..Thread.ThreadCount - 1], Root.QueueAllocator.allocator());
     defer Thread.Threads.deinit();
+    try Thread.MainThread.init(allocator);
+    defer Thread.MainThread.deinit();
     
     if (@hasDecl(User, "update")) {
         const Loop = ztracy.ZoneNC(@src(), "Update loop", 0xB96447);
@@ -77,13 +97,14 @@ fn MultiThreading() !void {
                 if (rate.interval != 0) if (now - rate.last >= rate.interval) {
                     rate.last += rate.interval;
                     if (@hasDecl(update_struct, "update")) try Thread.Threads.submit(&update_struct.update, .{});
-                    if (@hasDecl(update_struct, "main")) try update_struct.main();
+                    if (@hasDecl(update_struct, "main")) try Thread.MainThread.submit(update_struct.main, .{});
                 }
                 else {
                     if (@hasDecl(update_struct, "update")) try Thread.Threads.submit(&update_struct.update, .{});
-                    if (@hasDecl(update_struct, "main")) try update_struct.main();
+                    if (@hasDecl(update_struct, "main")) try Thread.MainThread.submit(update_struct.main, .{});
                 };
             }
+            try Thread.MainThread.pop();
         }
         Loop.End();
     }

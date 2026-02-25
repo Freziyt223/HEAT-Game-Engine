@@ -14,12 +14,12 @@ pub fn createWindow(
     renderer: Interface
 ) !Window {
     var interface = renderer;
-    try interface.setup.?(&interface);
+    try interface.setup();
     var window = Window{
         .window = try RendererType.zglfw.createWindow(width, height, title, monitor, share),
         .renderer = interface,
     };
     // Must be dealocated in Interface.deinit() which is called when destroying a window
-    if (renderer.windowInit) |init| try init(&window.renderer);
+    try window.renderer.windowInit();
     return window;
 }

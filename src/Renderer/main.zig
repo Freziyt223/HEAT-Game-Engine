@@ -3,6 +3,7 @@ pub const types = @import("types");
 pub const zglfw = @import("zglfw");
 pub const ztracy = @import("ztracy");
 pub const Interface = @import("Interface");
+const buildOptions = @import("buildOptions");
 
 pub const Window = struct {
     pub const Attribute = enum(c_int) {
@@ -41,7 +42,7 @@ pub const Window = struct {
     };
 
     pub fn destroy(self: *Window) void {
-        self.renderer.windowDeinit.?(&self.renderer);
+        self.renderer.windowDeinit();
         zglfw.destroyWindow(self.window);
     }
 
@@ -285,10 +286,10 @@ pub fn Renderer(
             return @import("OpenGL/main.zig").interface();
         },
         .Vulkan => {
-            return @import("OpenGL/main.zig").interface();
+            if (buildOptions.enable_vulkan) return @import("Vulkan/main.zig").interface() else @panic("Vulkan was not included when building the application. Paramether enable_vulkan is off!\n");
         },
         .none => {
-            return @import("OpenGL/main.zig").interface();
+            return @import("none.zig").interface();
         },
     }
 }

@@ -66,7 +66,7 @@ pub fn build(b: *std.Build) void {
         .optimize = Options.optimize,
         .registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml")
     }).module("vulkan-zig") else null;
-    
+   if (vulkan_zig) |vulkan| zglfw_mod.addImport("vulkan", vulkan);
 
     // =====================================================================================
     // Engine separated into modules
@@ -121,6 +121,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/Renderer/Interface.zig"),
         .target = target,
         .optimize = Options.optimize,
+        .imports = &.{.{.name = "IO", .module = IO}}
     });
 
     const Renderer = b.addModule("Renderer", .{
@@ -133,7 +134,8 @@ pub fn build(b: *std.Build) void {
             .{.name = "types", .module = types},
             .{.name = "Interface", .module = Interface},
             .{.name = "TrackingAllocator", .module = TrackingAllocator},
-            .{.name = "IO", .module = IO}
+            .{.name = "IO", .module = IO},
+            .{.name = "buildOptions", .module = options_module}
         },
         //.strip = true
     });

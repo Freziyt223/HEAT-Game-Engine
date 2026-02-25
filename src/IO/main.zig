@@ -3,6 +3,7 @@
 const std = @import("std");
 const Engine = @import("Root");
 pub var Allocator = &Engine.InternalAllocator;
+const TUI = @import("TUI.zig");
 
 pub var EnableLogging: bool = false;
 pub var LogLocation: []const u8 = "logs/latest.txt";
@@ -21,15 +22,14 @@ pub const Colour = extern union {
 
 // =========================================================================================
 // Console IO
+var Mutex = std.Thread.Mutex{};
 pub const Console = struct {
-    var Mutex = std.Thread.Mutex{};
     pub fn Print(comptime fmt: []const u8, args: anytype) !void {
         Mutex.lock();
         defer Mutex.unlock();
         const Zone = Engine.ztracy.ZoneNC(@src(), "Console print", 0xFF0000);
         defer Zone.End();
-        var buf: [1024]u8 = undefined;
-        var stdout = std.fs.File.stdout().writer(buf[0..buf.len]);
+        var stdout = std.fs.File.stdout().writer(TUI.buf[0..TUI.buf.len]);
         try stdout.interface.print(fmt, args);
         try stdout.interface.flush();
 
@@ -47,14 +47,15 @@ pub const Console = struct {
         defer Mutex.unlock();
         const Zone = Engine.ztracy.ZoneNC(@src(), "Console colour crint", 0xFFEE00);
         defer Zone.End();
-        var buf: [1024]u8 = undefined;
-        var stdout = std.fs.File.stdout().writer(buf[0..buf.len]);
+        var stdout = std.fs.File.stdout().writer(TUI.buf[0..TUI.buf.len]);
         try stdout.interface.print("\x1b[38;2;{d};{d};{d}m", .{colour.rgba.r, colour.rgba.g, colour.rgba.b});
         try stdout.interface.print(fmt, args);
         try stdout.interface.print("\x1b[0m", .{});
         try stdout.interface.flush();
     }
 };
+
+
 
 
 // =========================================================================================

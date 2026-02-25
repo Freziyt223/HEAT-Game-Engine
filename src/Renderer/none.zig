@@ -29,12 +29,13 @@ pub const InterfaceError = error{
 // ================================================================================================
 /// Use this to get renderer interface
 pub fn interface() Interface {
-    return Interface{
-        .setup = &setupInterface,
-        .windowInit = &windowInit,
-        .windowDeinit = &windowDeinit,
-        .deinit = &deinit
-    };
+    return Interface.make(.{
+        .setup = @ptrCast(&setupInterface),
+        .windowInit = @ptrCast(&windowInit),
+        .windowDeinit = @ptrCast(&windowDeinit),
+        .deinit = @ptrCast(&deinit),
+        .listDevices = @ptrCast(&listDevices)
+    });
 }
 
 pub fn deinit(self: *Interface) void {
@@ -51,13 +52,18 @@ fn setupInterface(self: *Interface) !void {
 }
 
 fn windowInit(self: *Interface) !void {
-    self.context = try self.allocator.create(Context);
+    self.vtable.context = try self.vtable.allocator.create(Context);
 }
 
 pub fn windowDeinit(self: *Interface) void {
-    self.allocator.destroy(self.Context(Context));
+    self.vtable.allocator.destroy(self.Context(Context));
 }
 
 fn initContext(_: *Interface) !void {
 
+}
+
+
+fn listDevices(_: *Interface) ?[]Interface.deviceInfoType {
+    return null;
 }
