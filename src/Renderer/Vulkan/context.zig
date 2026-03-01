@@ -17,7 +17,6 @@ pub fn initContext(self: *Interface, main: type) !void {
     // ============================================================================================
     // Checking if everything is setup
     const allocator = self.vtable.allocator;
-    if (!self.vtable.inited) return error.NotInitialized;
     if (!zglfw.isVulkanSupported()) return error.NotSupportedByGLFW;
     main.vkb = vulkan.BaseWrapper.load(zglfw.getInstanceProcAddress);
 

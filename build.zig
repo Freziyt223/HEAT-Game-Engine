@@ -135,7 +135,8 @@ pub fn build(b: *std.Build) void {
             .{.name = "Interface", .module = Interface},
             .{.name = "TrackingAllocator", .module = TrackingAllocator},
             .{.name = "IO", .module = IO},
-            .{.name = "buildOptions", .module = options_module}
+            .{.name = "buildOptions", .module = options_module},
+            .{.name = "Thread", .module = Thread}
         },
         //.strip = true
     });

@@ -11,6 +11,7 @@ pub const deviceInfoType = struct {
 const vtableType = struct {
     inited: bool = false,
     allocator: std.mem.Allocator = undefined,
+    init: ?*const fn(self: *Self) anyerror!void = null,
     setup: ?*const fn(self: *Self) anyerror!void = null,
     windowInit: ?*const fn(self: *Self) anyerror!void = null,
     windowDeinit: ?*const fn(self: *Self) void = null,
@@ -32,8 +33,9 @@ pub fn Context(self: *Self, comptime Type: type) *Type {
     return @as(*Type, @ptrCast(self.vtable.context));
 }
 
-pub fn init(self: *Self, Allocator: std.mem.Allocator) void {
+pub fn init(self: *Self, Allocator: std.mem.Allocator) !void {
     self.vtable.allocator = Allocator;
+    if (self.vtable.init) |func| try func(self);
     self.vtable.inited = true;
 }
 pub fn deinit(self: *Self) void {

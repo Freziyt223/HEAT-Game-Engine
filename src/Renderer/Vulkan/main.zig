@@ -40,6 +40,7 @@ pub const InterfaceError = error{
 /// Use this to get renderer interface
 pub fn interface() Interface {
     return Interface.make(.{
+        .init = init,
         .setup = @ptrCast(&setupInterface),
         .windowInit = @ptrCast(&windowSpecific.windowInit),
         .windowDeinit = @ptrCast(&windowSpecific.windowDeinit),
@@ -65,10 +66,12 @@ pub fn deinit(self: *const Interface) void {
 // ================================================================================================
 // Internal vulkan functions
 /// set glfw hints and create global context like Instance, Device etc.
-fn setupInterface(self: *Interface) !void {
+fn init(self: *Interface) !void {
+    if (initedContext == false) return context.initContext(self, Self);
+}
+fn setupInterface(_: *Interface) !void {
     zglfw.windowHint(.client_api, .no_api);
     zglfw.windowHint(.resizable, false);
-    if (initedContext == false) return context.initContext(self, Self);
 }
 
 fn listDevices(_: *Interface) ?[]Interface.deviceInfoType {

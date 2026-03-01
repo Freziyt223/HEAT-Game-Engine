@@ -7,6 +7,7 @@ const Thread = @import("Thread");
 const Root = @import("Root");
 const TrackingAllocator = @import("TrackingAllocator");
 const buildOptions = @import("buildOptions");
+
 // To optimize runtime we do checks in runtime and for while loop we select 
 // while loop that has only declarated fields so it doesn't need to check
 // for existance of the same value each time
@@ -57,7 +58,7 @@ pub fn main() !void {
     // User update functions.
     // Queue is separated for singlethreading and multithreading versions.
     if (Thread.ThreadCount == 1 or !State.MultiThreading) try SingleThreading()
-    else try MultiThreading();
+    else try MultiThreading(); 
     //try SingleThreading();
 }
 
@@ -96,15 +97,13 @@ fn MultiThreading() !void {
                 const rate = &Tick_Rates[i];
                 if (rate.interval != 0) if (now - rate.last >= rate.interval) {
                     rate.last += rate.interval;
-                    if (@hasDecl(update_struct, "update")) try Thread.Threads.submit(&update_struct.update, .{});
-                    if (@hasDecl(update_struct, "main")) try Thread.MainThread.submit(update_struct.main, .{});
+                    if (@hasDecl(update_struct, "update")) Thread.Threads.submit(update_struct.update, .{});
                 }
                 else {
-                    if (@hasDecl(update_struct, "update")) try Thread.Threads.submit(&update_struct.update, .{});
-                    if (@hasDecl(update_struct, "main")) try Thread.MainThread.submit(update_struct.main, .{});
+                    if (@hasDecl(update_struct, "update")) Thread.Threads.submit(update_struct.update, .{});
                 };
             }
-            try Thread.MainThread.pop();
+            Thread.MainThread.pop();
         }
         Loop.End();
     }
@@ -133,12 +132,11 @@ fn SingleThreading() !void {
                 const rate = &Tick_Rates[i];
                 if (rate.interval != 0) if (now - rate.last >= rate.interval) {
                     rate.last += rate.interval;
-                    if (@hasDecl(update_struct, "main")) try update_struct.main();
-                    if (@hasDecl(update_struct, "update")) try update_struct.update();
+                    if (@hasDecl(update_struct, "update")) update_struct.update();
                 } else {
-                    if (@hasDecl(update_struct, "main")) try update_struct.main();
-                    if (@hasDecl(update_struct, "update")) try update_struct.update();
+                    if (@hasDecl(update_struct, "update")) update_struct.update();
                 };
+                Thread.MainThread.pop();
             }
         }
         Loop.End();
