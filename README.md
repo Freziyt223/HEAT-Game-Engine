@@ -11,7 +11,6 @@ Use b.option(bool, "optimize", ...) or set it manually.
 - [Requirements](#requirements)
 
 ## What this repository is
-**For now only singlethreading mode is capable of managing windows with GLFW without bugs**
 It is a repository for a game engine, it is made for saving my work and maybe a community work.
 I'm making it as a hobby.
 
@@ -22,7 +21,7 @@ I've made an example "game" on this repository: [link](https://github.com/Freziy
 - Print to console,
 - Print colourful text to console(if terminal supports colour),
 - Has proper init, update and deinit functions,
-- Multithreading queue,(only without window management with GLFW)
+- Multithreading queue,
 - Stage multiple update function with specific tick-rates(uses queue),
 
 Windowing and terminal user interface is still not ready, so don't use it.
@@ -35,6 +34,7 @@ I'd be very pleased if anyone would help me with setting up glfw windowing or TU
 
 # Requirements
 **Remark**
+**(Needs to be updated, now results vary, especially on linux)**
 Make sure to clean up .zig-cache time to time because it can grow a lot in space.
 Enabling strip doesn't generate pdb file so it may save you some space.
 - Zig version 0.15.X
