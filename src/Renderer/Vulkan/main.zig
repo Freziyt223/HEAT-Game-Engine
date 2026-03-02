@@ -13,7 +13,7 @@ const windowSpecific = @import("windowSpecific.zig");
 
 // ================================================================================================
 // Top-level fields for vulkan
-pub const required_layer_names= [_][*:0]const u8{"VK_LAYER_KHRONOS_validation"};
+pub const required_layer_names= [_][*:0]const u8{};
 pub const required_device_extensions = [_][*:0]const u8{vulkan.extensions.khr_swapchain.name};
 
 

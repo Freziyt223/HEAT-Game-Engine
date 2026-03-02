@@ -56,17 +56,27 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = Options.optimize,
         .import_vulkan = Options.enable_vulkan,
+        .shared = if (target.query.os_tag == .linux) false else true,
     });
     zglfw_mod = zglfw.module("root");
     zglfw_art = zglfw.artifact("glfw");
 
     
-    vulkan_zig = if (Options.enable_vulkan) b.dependency("vulkan_zig", .{
-        .target = target,
-        .optimize = Options.optimize,
-        .registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml")
-    }).module("vulkan-zig") else null;
-   if (vulkan_zig) |vulkan| zglfw_mod.addImport("vulkan", vulkan);
+    if (Options.enable_vulkan) {
+        const registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml");
+        const vk_gen = b.dependency("vulkan_zig", .{
+            .target = b.graph.host,
+            .optimize = Options.optimize,
+        }).artifact("vulkan-zig-generator");
+        const vk_generate_cmd = b.addRunArtifact(vk_gen);
+        vk_generate_cmd.addFileArg(registry);
+        vulkan_zig = b.addModule("vulkan-zig", .{
+            .root_source_file = vk_generate_cmd.addOutputFileArg("vk.zig"),
+            .target = target,
+            .optimize = Options.optimize,
+        });
+    } else vulkan_zig = null;
+    if (vulkan_zig) |vulkan| zglfw_mod.addImport("vulkan", vulkan);
 
     // =====================================================================================
     // Engine separated into modules
