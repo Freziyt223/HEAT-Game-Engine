@@ -4,9 +4,27 @@ const State = @import("State");
 
 const Self = @This();
 
-Allocated: std.atomic.Value(usize) = .{ .raw = 0 },
-Category: [*:0]const u8,
+const inner_struct = struct {
+    Allocated: std.atomic.Value(usize),
+    AllocationCount: std.atomic.Value(usize),
+    Peak: std.atomic.Value(usize),
+    Category: [*:0]const u8,
+};
+inner: inner_struct,
 InternalAllocator: std.mem.Allocator,
+
+pub fn Allocated(self: Self) usize {
+    return self.inner.Allocated.load(.monotonic);
+}
+pub fn Peak(self: Self) usize {
+    return self.inner.Peak.load(.monotonic);
+}
+pub fn AllocationCount(self: Self) usize {
+    return self.inner.AllocationCount.load(.monotonic);
+}
+pub fn Category(self: Self) [*:0]const u8 {
+    return self.inner.Category;
+}
 
 const tracking_vtable = std.mem.Allocator.VTable{
     .alloc = alloc,
@@ -18,7 +36,11 @@ const tracking_vtable = std.mem.Allocator.VTable{
 pub fn init(Allocator: std.mem.Allocator, category: [*:0]const u8) Self {
     return .{
         .InternalAllocator = Allocator,
-        .Category = category,
+        .inner = .{
+            .Category = category, 
+            .Allocated = .{ .raw = 0 },
+            .AllocationCount = .{ .raw = 0 },
+            .Peak = .{ .raw = 0 }}
     };
 }
 
@@ -46,8 +68,17 @@ fn alloc(state: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: 
     if (!shouldTrack(self)) return res;
 
     if (res) |ptr| {
-        ztracy.AllocN(ptr, len, self.Category);
-        _ = self.Allocated.fetchAdd(len, .monotonic);
+        ztracy.AllocN(ptr, len, self.inner.Category);
+
+        const new_allocated = self.inner.Allocated.fetchAdd(len, .monotonic) + len;
+        _ = self.inner.AllocationCount.fetchAdd(1, .monotonic);
+
+        // оновлюємо Peak
+        var peak = self.inner.Peak.load(.monotonic);
+        while (new_allocated > peak) : (peak = self.inner.Peak.load(.monotonic)) {
+            if (self.inner.Peak.compareExchangeStrong(peak, new_allocated, .monotonic, .monotonic)) break;
+        }
+
         State.changeUsedMemory(@intCast(len));
     }
 
@@ -66,8 +97,12 @@ fn free(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, ret_addr: us
 
     if (!shouldTrack(self)) return;
 
-    ztracy.FreeN(buf.ptr, self.Category);
-    _ = self.Allocated.fetchSub(buf.len, .monotonic);
+    ztracy.FreeN(buf.ptr, self.inner.Category);
+
+    _ = self.inner.Allocated.fetchSub(buf.len, .monotonic);
+    _ = self.inner.AllocationCount.fetchSub(1, .monotonic);
+    _ = self.inner.FreeCount.fetchAdd(1, .monotonic);
+
     State.changeUsedMemory(-@as(isize, @intCast(buf.len)));
 }
 
@@ -87,16 +122,27 @@ fn resize(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: u
 
     if (new_len > buf.len) {
         const diff = new_len - buf.len;
-        _ = self.Allocated.fetchAdd(diff, .monotonic);
+        const new_allocated = self.inner.Allocated.fetchAdd(diff, .monotonic) + diff;
+        _ = self.inner.AllocationCount.fetchAdd(1, .monotonic);
+
+        // оновлюємо Peak
+        var peak = self.inner.Peak.load(.monotonic);
+        while (new_allocated > peak) : (peak = self.inner.Peak.load(.monotonic)) {
+            if (self.inner.Peak.compareExchangeStrong(peak, new_allocated, .monotonic, .monotonic)) break;
+        }
+
         State.changeUsedMemory(@intCast(diff));
     } else if (new_len < buf.len) {
         const diff = buf.len - new_len;
-        _ = self.Allocated.fetchSub(diff, .monotonic);
+        _ = self.inner.Allocated.fetchSub(diff, .monotonic);
+        _ = self.inner.FreeCount.fetchAdd(1, .monotonic);
+        _ = self.inner.AllocationCount.fetchSub(1, .monotonic);
+
         State.changeUsedMemory(-@as(isize, @intCast(diff)));
     }
 
-    ztracy.FreeN(buf.ptr, self.Category);
-    ztracy.AllocN(buf.ptr, new_len, self.Category);
+    ztracy.FreeN(buf.ptr, self.inner.Category);
+    ztracy.AllocN(buf.ptr, new_len, self.inner.Category);
 
     return true;
 }
@@ -115,16 +161,27 @@ fn remap(state: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: us
     if (!shouldTrack(self)) return res;
 
     if (res) |ptr| {
-        ztracy.FreeN(buf.ptr, self.Category);
-        ztracy.AllocN(ptr, new_len, self.Category);
+        ztracy.FreeN(buf.ptr, self.inner.Category);
+        ztracy.AllocN(ptr, new_len, self.inner.Category);
 
         if (new_len > buf.len) {
             const diff = new_len - buf.len;
-            _ = self.Allocated.fetchAdd(diff, .monotonic);
+            const new_allocated = self.inner.Allocated.fetchAdd(diff, .monotonic) + diff;
+            _ = self.inner.AllocationCount.fetchAdd(1, .monotonic);
+
+            // оновлюємо Peak
+            var peak = self.inner.Peak.load(.monotonic);
+            while (new_allocated > peak) : (peak = self.inner.Peak.load(.monotonic)) {
+                if (self.inner.Peak.compareExchangeStrong(peak, new_allocated, .monotonic, .monotonic)) break;
+            }
+
             State.changeUsedMemory(@intCast(diff));
         } else if (new_len < buf.len) {
             const diff = buf.len - new_len;
-            _ = self.Allocated.fetchSub(diff, .monotonic);
+            _ = self.inner.Allocated.fetchSub(diff, .monotonic);
+            _ = self.inner.FreeCount.fetchAdd(1, .monotonic);
+            _ = self.inner.AllocationCount.fetchSub(1, .monotonic);
+
             State.changeUsedMemory(-@as(isize, @intCast(diff)));
         }
     }

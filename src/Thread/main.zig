@@ -1,5 +1,4 @@
 const std = @import("std");
+const root = @import("root.zig");
 
-pub var MainThreadId: usize = 0;
-pub var NumberOfThreads: usize = 0;
-// pub const JobQueue = @import("queue.zig");
+pub const JobQueue = @import("job_queue.zig");

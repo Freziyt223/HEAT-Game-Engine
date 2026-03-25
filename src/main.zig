@@ -79,10 +79,10 @@ fn multithreaded() !void {
     defer std.debug.assert(gpa.deinit() == .ok);
 
     if (@hasDecl(User, "conf")) User.conf();
-
     
     var InitAllocator = TrackingAllocator.init(Conf.InitAllocator orelse gpa.allocator(), "UserInit");
     var UserAllocator = TrackingAllocator.init(gpa.allocator(), "User");
+    var QueueAllocator = TrackingAllocator.init(Conf.JobQueueAllocator orelse gpa.allocator(), "JobQueue");
 
     var args = try std.process.argsWithAllocator(InitAllocator.allocator());
     defer args.deinit();
